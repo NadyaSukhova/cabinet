@@ -151,7 +151,7 @@ export default {
       },
       type: "order_number",
       year: "",
-      id: this.$route.query.id,
+      id: "",
       search_data: {
         order_number: "",
         psid: "",
@@ -196,8 +196,8 @@ export default {
       if (parseInt(d1.substring(3, 5)) > d2.getMonth() + 1) return 1;
       if (parseInt(d1.substring(3, 5)) < d2.getMonth() + 1) return 2;
       // day
-      if (parseInt(d1.substring(0,2)) > d2.getDate()) return 1;
-      if (parseInt(d1.substring(0,2)) < d2.getDate()) return 2;
+      if (parseInt(d1.substring(0, 2)) > d2.getDate()) return 1;
+      if (parseInt(d1.substring(0, 2)) < d2.getDate()) return 2;
       // hour
       if (parseInt(d1.substring(13, 15)) > d2.getHours()) return 1;
       if (parseInt(d1.substring(13, 15)) < d2.getHours()) return 2;
@@ -208,7 +208,7 @@ export default {
     },
     getInfo() {
       let data = this.info;
-      if (this.date_period) {
+      if (this.date_period.length > 0) {
         data = data.filter(
           note =>
             (this.compareDates(note.date, this.date_period[0]) === 1 ||
@@ -234,11 +234,18 @@ export default {
       if (this.search_data.client_id) {
         data = data.filter(note => note.uid === this.search_data.client_id);
       }
+      if (this.search_data.order_number) {
+        data = data.filter(note => note.id === this.search_data.order_number);
+      }
       return data;
     }
   },
   components: { "fixed-left-column": fixedLeftColumn, DateRange, ButtonModule, Search, Empty },
   beforeMount() {
+    if (this.$route.query.id) {
+      this.id = this.$route.query.id;
+    }
+    
     try {
       axios.get("http://localhost:3001/lk/method/orders.getTest").then(response => {
         this.info = response.data.response.data.orders;
