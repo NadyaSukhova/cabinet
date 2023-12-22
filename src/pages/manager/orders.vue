@@ -2,9 +2,31 @@
   <fixed-left-column>
     <template v-slot:fixed>
       <div class="block">
-        <DateRange v-model="date_period" placeholder="Выберите период" @change="changedDate($event), checkData()" /><br />
+        <ButtonModule
+          v-if="smallScreen()"
+          size="s"
+          color="purple-reverse"
+          to="orders"
+          @click="
+            clearAll();
+            new_data = false;
+            searchQuery = '';
+          "
+        >
+          Назад
+        </ButtonModule>
+        <DateRange
+          v-model="date_period"
+          placeholder="Выберите период"
+          @change="changedDate($event), checkData()"
+        /><br />
         <br />
-        <Search v-model:search-query="searchQuery" v-model:type="type" :types="types" @click="addSearchData(), checkData()" />
+        <Search
+          v-model:search-query="searchQuery"
+          v-model:type="type"
+          :types="types"
+          @click="addSearchData(), checkData()"
+        />
       </div>
       <br />
       <div class="block">
@@ -225,7 +247,7 @@ export default {
       return new Date(year, month - 1, day);
     },
     changedDate(date) {
-      this.date_period=[new Date(date.date_start * 1000), new Date(date.date_finish * 1000)];
+      this.date_period = [new Date(date.date_start * 1000), new Date(date.date_finish * 1000)];
       if (this.date_period && this.date_period[0])
         this.$router.push({
           path: "/manager/orders",
@@ -234,6 +256,9 @@ export default {
             date_finish: this.date_period[1].toISOString().slice(0, 10).replaceAll("-", "")
           }
         });
+    },
+    smallScreen() {
+      return window.innerWidth < 767;
     }
   },
   components: { "fixed-left-column": fixedLeftColumn, DateRange, ButtonModule, Search, Empty },
@@ -267,7 +292,24 @@ export default {
 </script>
 
 <style>
+@mixin mq($from, $to: false) {
+  @if $to {
+    @media (min-width: #{$from}px) and (max-width: #{$to}px) {
+      @content;
+    }
+  } @else  {
+    @media (max-width: #{$from}px) {
+      @content;
+    }
+  }
+}
+
 .block {
+  @include mq(767) {
+    padding: 16px;
+    margin: 15px;
+  }
+  font-size: small;
   padding: 16px;
   margin: 15px;
 }
