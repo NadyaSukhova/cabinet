@@ -2,16 +2,9 @@
   <fixed-left-column>
     <template v-slot:fixed>
       <div class="block">
-        <DateRange v-model="date_period" placeholder="Выберите период" @change="checkData()" /><br />
+        <DateRange v-model="date_period" placeholder="Выберите период" @change="changedDate($event), checkData()" /><br />
         <br />
-        <Search
-          v-model:search-query="searchQuery"
-          v-model:type="type"
-          :types="types"
-          @click="
-            search_data[String(type)] = searchQuery;
-          "
-        />
+        <Search v-model:search-query="searchQuery" v-model:type="type" :types="types" @click="addSearchData(), checkData()" />
       </div>
       <br />
       <div class="block">
@@ -26,10 +19,15 @@
         </select>
         <br />
         <div class="buttons">
-          <ButtonModule v-if="new_data" style="margin-right: 5px" size="s" color="purple" @click="new_data = true">
-            Показать
-          </ButtonModule>
-          <ButtonModule v-else style="margin-right: 5px" size="s" color="purple-reverse" @click="new_data = true">
+          <ButtonModule
+            style="margin-right: 5px"
+            size="s"
+            color="purple-reverse"
+            @click="
+              search_data.year = year;
+              $router.push({ path: '/manager/orders', query: { year: year } });
+            "
+          >
             Показать
           </ButtonModule>
           <ButtonModule
@@ -37,7 +35,7 @@
             color="purple-reverse"
             to="orders"
             @click="
-              year = clearAll();
+              clearAll();
               new_data = false;
               searchQuery = '';
             "
@@ -48,7 +46,7 @@
       </div>
     </template>
     <template v-slot:default>
-      <div v-if="new_data || checkData()">
+      <div v-if="checkData()">
         <div v-if="getInfo().length > 0">
           <div v-for="note in getInfo()" :key="note">
             <div
@@ -129,12 +127,22 @@ export default {
         psid: "",
         client_id: "",
         phone: "",
-        email: ""
+        email: "",
+        year: ""
       },
       new_data: false
     };
   },
   methods: {
+    addSearchData() {
+      this.search_data[String(this.type)] = this.searchQuery;
+      if (this.searchQuery)
+        this.$router.push({
+          path: "/manager/orders",
+          query: { search_type: this.type, search_value: this.searchQuery }
+        });
+      else this.$router.push({ path: "/manager/orders" });
+    },
     clearAll() {
       this.year = "";
       this.date_period = [];
@@ -146,11 +154,11 @@ export default {
       this.search_data.client_id = "";
       this.search_data.phone = "";
       this.search_data.email = "";
+      this.search_data.year = "";
     },
     checkData() {
       for (const el of Object.values(this.search_data)) {
         if (el !== "") {
-          this.$router.push({ path: "/manager/orders", query: { search_type: this.type, search_value: el } });
           return true;
         }
       }
@@ -172,13 +180,7 @@ export default {
       // day
       if (parseInt(d1.substring(0, 2)) > d2.getDate()) return 1;
       if (parseInt(d1.substring(0, 2)) < d2.getDate()) return 2;
-      // hour
-      if (parseInt(d1.substring(13, 15)) > d2.getHours()) return 1;
-      if (parseInt(d1.substring(13, 15)) < d2.getHours()) return 2;
-      // minute
-      if (parseInt(d1.substring(16, 18)) > d2.getMinutes()) return 1;
-      if (parseInt(d1.substring(16, 18)) === d2.getMinutes()) return 0;
-      if (parseInt(d1.substring(16, 18)) < d2.getMinutes()) return 2;
+      if (parseInt(d1.substring(0, 2)) === d2.getDate()) return 2;
     },
     getInfo() {
       let data = this.info;
@@ -191,8 +193,8 @@ export default {
               this.compareDates(note.date, this.date_period[1]) === 0)
         );
       }
-      if (this.year) {
-        data = data.filter(note => note.date.substring(6, 10) === this.year);
+      if (this.search_data.year) {
+        data = data.filter(note => note.date.substring(6, 10) === this.search_data.year);
       }
       if (this.search_data.psid) {
         data = data.filter(note => note.psid === this.search_data.psid);
@@ -215,12 +217,44 @@ export default {
         data = data.filter(note => note.id === this.id);
       }
       return data;
+    },
+    getDate(date) {
+      const year = date.substring(0, 4);
+      const month = date.substring(4, 6);
+      const day = date.substring(6, 8);
+      return new Date(year, month - 1, day);
+    },
+    changedDate(date) {
+      this.date_period=[new Date(date.date_start * 1000), new Date(date.date_finish * 1000)];
+      if (this.date_period && this.date_period[0])
+        this.$router.push({
+          path: "/manager/orders",
+          query: {
+            date_start: this.date_period[0].toISOString().slice(0, 10).replaceAll("-", ""),
+            date_finish: this.date_period[1].toISOString().slice(0, 10).replaceAll("-", "")
+          }
+        });
     }
   },
   components: { "fixed-left-column": fixedLeftColumn, DateRange, ButtonModule, Search, Empty },
   beforeMount() {
     if (this.$route.query.id) {
       this.id = this.$route.query.id;
+    }
+    if (this.$route.query.year) {
+      this.search_data.year = this.$route.query.year;
+      this.year = this.$route.query.year;
+    }
+    if (this.$route.query.id) {
+      this.id = this.$route.query.id;
+    }
+    if (this.$route.query.search_value) {
+      this.type = this.$route.query.search_type;
+      this.searchQuery = this.$route.query.search_value;
+      this.search_data[this.$route.query.search_type] = this.$route.query.search_value;
+    }
+    if (this.$route.query.date_start && this.$route.query.date_finish) {
+      this.date_period = [this.getDate(this.$route.query.date_start), this.getDate(this.$route.query.date_finish)];
     }
 
     try {
