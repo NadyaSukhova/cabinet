@@ -10,7 +10,6 @@
           :types="types"
           @click="
             search_data[String(type)] = searchQuery;
-            checkData();
           "
         />
       </div>
@@ -27,7 +26,10 @@
         </select>
         <br />
         <div class="buttons">
-          <ButtonModule style="margin-right: 5px" size="s" color="purple-reverse" @click="new_data = true">
+          <ButtonModule v-if="new_data" style="margin-right: 5px" size="s" color="purple" @click="new_data = true">
+            Показать
+          </ButtonModule>
+          <ButtonModule v-else style="margin-right: 5px" size="s" color="purple-reverse" @click="new_data = true">
             Показать
           </ButtonModule>
           <ButtonModule
@@ -46,62 +48,9 @@
       </div>
     </template>
     <template v-slot:default>
-      <div v-if="$route.query.id">
-        <div
-          v-for="note in info.filter(function (n) {
-            return n.id === id;
-          })"
-          :key="note"
-        >
-          <div
-            @click="
-              $router.push({
-                path: '/manager/orders',
-                query: { id: note.id }
-              })
-            "
-          >
-            <div class="block">
-              <h2><b>ID №</b>{{ note.id }}</h2>
-              Телефон: {{ note.phone }} <br />
-              Номер фотосессии: {{ note.psid }}<br />
-              Клиент ID: {{ note.uid }}<br />
-              Email: {{ note.email_payer }} <br />
-              Дата: {{ note.date }} <br />
-              Год: {{ note.date.substring(6, 10) }}
-            </div>
-          </div>
-          <br />
-        </div>
-      </div>
-      <div v-else>
-        <div v-if="new_data">
-          <div v-if="getInfo().length > 0">
-            <div v-for="note in getInfo()" :key="note">
-              <div
-                @click="
-                  id = note.id;
-                  $router.push({ path: '/manager/orders', query: { id: note.id } });
-                "
-              >
-                <div class="block">
-                  <h2><b>ID №</b>{{ note.id }}</h2>
-                  Телефон: {{ note.phone }} <br />
-                  Номер фотосессии: {{ note.psid }}<br />
-                  Клиент ID: {{ note.uid }}<br />
-                  Email: {{ note.email_payer }} <br />
-                  Дата: {{ note.date }} <br />
-                  Год: {{ note.date.substring(6, 10) }}
-                </div>
-              </div>
-            </div>
-          </div>
-          <div v-else>
-            <Empty />
-          </div>
-        </div>
-        <div v-else>
-          <div v-for="note in info" :key="note">
+      <div v-if="new_data || checkData()">
+        <div v-if="getInfo().length > 0">
+          <div v-for="note in getInfo()" :key="note">
             <div
               @click="
                 id = note.id;
@@ -119,8 +68,31 @@
               </div>
             </div>
           </div>
-          <br />
         </div>
+        <div v-else>
+          <Empty />
+        </div>
+      </div>
+      <div v-else>
+        <div v-for="note in info" :key="note">
+          <div
+            @click="
+              id = note.id;
+              $router.push({ path: '/manager/orders', query: { id: note.id } });
+            "
+          >
+            <div class="block">
+              <h2><b>ID №</b>{{ note.id }}</h2>
+              Телефон: {{ note.phone }} <br />
+              Номер фотосессии: {{ note.psid }}<br />
+              Клиент ID: {{ note.uid }}<br />
+              Email: {{ note.email_payer }} <br />
+              Дата: {{ note.date }} <br />
+              Год: {{ note.date.substring(6, 10) }}
+            </div>
+          </div>
+        </div>
+        <br />
       </div>
     </template>
   </fixed-left-column>
@@ -178,15 +150,17 @@ export default {
     checkData() {
       for (const el of Object.values(this.search_data)) {
         if (el !== "") {
-          this.new_data = true;
-          break;
+          this.$router.push({ path: "/manager/orders", query: { search_type: this.type, search_value: el } });
+          return true;
         }
       }
-      if (this.year) this.new_data = true;
-      if (this.date_period) {
-        this.new_data = true;
-        console.log(this.date_period);
+      if (this.date_period && this.date_period.length > 0) {
+        return true;
       }
+      if (this.id) {
+        return true;
+      }
+      return false;
     },
     compareDates(d1, d2) {
       // year
@@ -208,7 +182,7 @@ export default {
     },
     getInfo() {
       let data = this.info;
-      if (this.date_period.length > 0) {
+      if (this.date_period && this.date_period.length > 0) {
         data = data.filter(
           note =>
             (this.compareDates(note.date, this.date_period[0]) === 1 ||
@@ -237,6 +211,9 @@ export default {
       if (this.search_data.order_number) {
         data = data.filter(note => note.id === this.search_data.order_number);
       }
+      if (this.id) {
+        data = data.filter(note => note.id === this.id);
+      }
       return data;
     }
   },
@@ -245,7 +222,7 @@ export default {
     if (this.$route.query.id) {
       this.id = this.$route.query.id;
     }
-    
+
     try {
       axios.get("http://localhost:3001/lk/method/orders.getTest").then(response => {
         this.info = response.data.response.data.orders;
